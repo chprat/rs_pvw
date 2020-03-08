@@ -6,8 +6,6 @@ use std::path::Path;
 pub struct Entry {
     pub id: u32,
     pub path: String,
-    pub del: bool,
-    pub seen: u32,
 }
 
 #[derive(Debug)]
@@ -32,6 +30,15 @@ impl<'a> Database<'a> {
             pictures_folder: Path::new(pictures_folder),
             connection,
         }
+    }
+    pub fn get_one(&self) -> Result<Entry> {
+        let mut stmt = self.connection.prepare("SELECT id, path FROM Pics WHERE seen = (SELECT MIN(seen) FROM Pics) AND del IS NOT 1 ORDER BY RANDOM() LIMIT 1;")?;
+        stmt.query_row(rusqlite::NO_PARAMS, |row| {
+            Ok(Entry {
+                id: row.get(0)?,
+                path: row.get(1)?,
+            })
+        })
     }
     pub fn stats(&self) -> Result<Stats> {
         let mut stmt = self.connection.prepare("SELECT count(id) FROM Pics;")?;
