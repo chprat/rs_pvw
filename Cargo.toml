@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 gtk = "0.8.1"
 rust-ini = "0.15.2"
+rusqlite = "0.21.0"

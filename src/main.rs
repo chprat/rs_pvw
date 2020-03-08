@@ -6,6 +6,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 mod configuration;
+mod database;
 
 fn slider() {
     if gtk::init().is_err() {
@@ -30,8 +31,18 @@ fn update_database() {
     println!("Update")
 }
 
-fn database_stats() {
-    println!("Stats")
+fn database_stats(config: &configuration::Configuration) {
+    let database = database::Database::new(&config);
+    let stats = database.stats().unwrap();
+    let nv = stats.not_viewed as f32;
+    let a = stats.all as f32;
+    println!(
+        "{} pictures\n{} pictures viewed\n{} pictures not viewed\n{:.2}% not viewed",
+        stats.all,
+        stats.viewed,
+        stats.not_viewed,
+        nv / a * 100.0
+    );
 }
 
 fn program_settings(config: &configuration::Configuration) {
@@ -133,7 +144,7 @@ fn main() {
         match args[1].as_str() {
             "update" => update_database(),
             "move" => move_files(),
-            "stats" => database_stats(),
+            "stats" => database_stats(&config),
             "settings" => program_settings(&config),
             _ => println!("Unsupported argument"),
         }
