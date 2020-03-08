@@ -1,26 +1,52 @@
 use std::env;
+extern crate gdk;
+extern crate gdk_pixbuf;
 extern crate gtk;
 use gtk::prelude::*;
-use gtk::{ButtonsType, DialogFlags, MessageDialog, MessageType, Window};
 use std::cell::RefCell;
 use std::rc::Rc;
 
 mod configuration;
 mod database;
 
-fn slider() {
+fn slider(config: &configuration::Configuration) {
+    let database = database::Database::new(&config);
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;
     }
-    MessageDialog::new(
-        None::<&Window>,
-        DialogFlags::empty(),
-        MessageType::Info,
-        ButtonsType::Ok,
-        "Hello World",
+    let glade_src = include_str!("slider.glade");
+    let builder = gtk::Builder::new_from_string(glade_src);
+
+    let slider_window: gtk::Window = builder.get_object("slider_window").unwrap();
+    let slider_img: gtk::Image = builder.get_object("slider_img").unwrap();
+    slider_window.connect_delete_event(|_, _| {
+        gtk::main_quit();
+        Inhibit(false)
+    });
+
+    slider_window
+        .override_background_color(slider_window.get_state_flags(), Some(&(gdk::RGBA::black())));
+
+    let mon = gdk::Screen::get_default().unwrap();
+    let monitor_width = mon.get_width();
+    let monitor_height = mon.get_height();
+    let mut picture_path = config.picture_folder.as_ref().unwrap().clone();
+    picture_path.push_str("/");
+    picture_path.push_str(database.get_one().unwrap().path.as_ref());
+    let img = gdk_pixbuf::Pixbuf::new_from_file_at_scale(
+        picture_path,
+        monitor_width,
+        monitor_height,
+        true,
     )
-    .run();
+    .unwrap();
+    slider_img.set_from_pixbuf(Some(img.as_ref()));
+
+    slider_window.fullscreen();
+    slider_window.show_all();
+
+    gtk::main();
 }
 
 fn move_files() {
@@ -139,7 +165,7 @@ fn main() {
         program_settings(&config);
     }
     if args.len() == 1 {
-        slider();
+        slider(&config);
     } else if args.len() == 2 {
         match args[1].as_str() {
             "update" => update_database(),
