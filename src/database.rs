@@ -33,6 +33,15 @@ impl Database {
             })
         })
     }
+    pub fn get_entry(&self, id: u32) -> Result<Entry> {
+        let mut stmt = self.connection.prepare("SELECT id, path FROM Pics WHERE id = ?1")?;
+        stmt.query_row(params![id], |row| {
+            Ok(Entry {
+                id: row.get(0)?,
+                path: row.get(1)?,
+            })
+        })
+    }
     pub fn stats(&self) -> Result<Stats> {
         let mut stmt = self.connection.prepare("SELECT count(id) FROM Pics;")?;
         let all = stmt.query_row(rusqlite::NO_PARAMS, |row| row.get::<_, u32>(0))?;
@@ -50,6 +59,8 @@ impl Database {
             not_viewed,
         })
     }
+    // TODO: this function currently only exists because we only
+    // transfer the id of an entry between timer and key_listener
     pub fn get_marked(&self) -> Result<Vec<Entry>> {
         let mut stmt = self
             .connection
@@ -75,6 +86,11 @@ impl Database {
     pub fn increment(&self, entry: &Entry) -> Result<()> {
         self.connection
             .execute("UPDATE Pics SET seen=seen + 1 WHERE id =  ?1", params![entry.id])?;
+        Ok(())
+    }
+    pub fn mark(&self, entry: &Entry) -> Result<()> {
+        self.connection
+            .execute("UPDATE Pics SET del=1 WHERE id =  ?1", params![entry.id])?;
         Ok(())
     }
 }

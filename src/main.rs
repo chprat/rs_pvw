@@ -15,7 +15,7 @@ mod configuration;
 mod database;
 
 enum Message {
-    UpdateImg(String),
+    UpdateImg((u32, String)),
 }
 
 fn slider(config: &configuration::Configuration) {
@@ -49,7 +49,7 @@ fn slider(config: &configuration::Configuration) {
         entry.path
     );
     let _ = database.increment(&entry);
-    let _ = sender.send(Message::UpdateImg(picture_path));
+    let _ = sender.send(Message::UpdateImg((entry.id, picture_path)));
 
     let _guard = {
         let picture_path_clone = config.picture_folder.as_ref().unwrap().clone();
@@ -61,14 +61,15 @@ fn slider(config: &configuration::Configuration) {
                 entry.path
             );
             let _ = database.increment(&entry);
-            let _ = sender.send(Message::UpdateImg(picture_path));
+            let _ = sender.send(Message::UpdateImg((entry.id, picture_path)));
         })
     };
 
-    let slider_img_clone = slider_img;
+    let slider_img_clone = slider_img.clone();
+    let slider_window_clone = slider_window.clone();
     receiver.attach(None, move |msg| {
         match msg {
-            Message::UpdateImg(picture_path) => {
+            Message::UpdateImg((id, picture_path)) => {
                 let img = gdk_pixbuf::Pixbuf::new_from_file_at_scale(
                     picture_path,
                     monitor_width,
@@ -77,6 +78,8 @@ fn slider(config: &configuration::Configuration) {
                 )
                 .unwrap();
                 slider_img_clone.set_from_pixbuf(Some(img.as_ref()));
+                // TODO: abusing the title to transfer data is probably not the best idea
+                slider_window_clone.set_title(&id.to_string()[..]);
             }
         }
         glib::Continue(true)
@@ -84,6 +87,22 @@ fn slider(config: &configuration::Configuration) {
 
     slider_window.connect_delete_event(|_, _| {
         gtk::main_quit();
+        Inhibit(false)
+    });
+
+    // TODO: using a second database is probably not the best idea
+    // probably we should at least throw in some mutex?
+    let database2 = database::Database::new(&config.database_file);
+    slider_window.connect_key_press_event(move |window, gdk| {
+        match gdk.get_keyval() {
+            gdk::enums::key::space => {
+                database2.mark(&database2.get_entry(window.get_title().unwrap().as_str().parse::<u32>().unwrap()).unwrap()).unwrap()
+            },
+            // TODO: implement moving during slideshow
+            gdk::enums::key::Left => println!("left"),
+            gdk::enums::key::Right => println!("right"),
+            _ => (),
+        };
         Inhibit(false)
     });
 
