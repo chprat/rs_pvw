@@ -1,4 +1,4 @@
-use rusqlite::{Connection, Result};
+use rusqlite::{params, Connection, Result};
 
 #[derive(Debug)]
 pub struct Entry {
@@ -49,5 +49,27 @@ impl Database {
             viewed,
             not_viewed,
         })
+    }
+    pub fn get_marked(&self) -> Result<Vec<Entry>> {
+        let mut stmt = self
+            .connection
+            .prepare("SELECT id, path FROM Pics WHERE del = 1;")?;
+        let mut ret: Vec<Entry> = Vec::new();
+        let entry_iter = stmt.query_map(rusqlite::NO_PARAMS, |row| {
+            Ok(Entry {
+                id: row.get(0)?,
+                path: row.get(1)?,
+            })
+        })?;
+
+        for entry in entry_iter {
+            ret.push(entry.unwrap());
+        }
+        Ok(ret)
+    }
+    pub fn remove(&self, entry: &Entry) -> Result<()> {
+        self.connection
+            .execute("DELETE FROM Pics WHERE id = ?1", params![entry.id])?;
+        Ok(())
     }
 }

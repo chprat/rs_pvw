@@ -7,6 +7,8 @@ extern crate gtk;
 extern crate timer;
 use gtk::prelude::*;
 use std::cell::RefCell;
+use std::fs;
+use std::path::Path;
 use std::rc::Rc;
 
 mod configuration;
@@ -87,8 +89,24 @@ fn slider(config: &configuration::Configuration) {
     gtk::main();
 }
 
-fn move_files() {
-    println!("Move")
+fn move_files(config: &configuration::Configuration) {
+    let database = database::Database::new(&config.database_file);
+    let entries = database.get_marked().unwrap();
+    for entry in &entries {
+        let base_path = Path::new(config.picture_folder.as_ref().unwrap())
+            .parent()
+            .unwrap();
+        let old_filename =
+            Path::new(config.picture_folder.as_ref().unwrap()).join(entry.path.clone());
+        let del_base_path = base_path.join("delete");
+        let new_filename = del_base_path.join(entry.path.clone());
+        let new_filefolder = new_filename.parent().unwrap();
+        if !new_filefolder.exists() {
+            let _ = fs::create_dir_all(new_filefolder);
+        }
+        let _ = database.remove(entry);
+        let _ = fs::rename(old_filename, new_filename);
+    }
 }
 
 fn update_database() {
@@ -207,7 +225,7 @@ fn main() {
     } else if args.len() == 2 {
         match args[1].as_str() {
             "update" => update_database(),
-            "move" => move_files(),
+            "move" => move_files(&config),
             "stats" => database_stats(&config),
             "settings" => program_settings(&config),
             _ => println!("Unsupported argument"),
