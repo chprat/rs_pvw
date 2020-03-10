@@ -1,7 +1,10 @@
 use std::env;
+extern crate chrono;
 extern crate gdk;
 extern crate gdk_pixbuf;
+extern crate glib;
 extern crate gtk;
+extern crate timer;
 use gtk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -9,21 +12,26 @@ use std::rc::Rc;
 mod configuration;
 mod database;
 
+enum Message {
+    UpdateImg(String),
+}
+
 fn slider(config: &configuration::Configuration) {
     let database = database::Database::new(&config.database_file);
+    let timer = timer::Timer::new();
+
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;
     }
+
+    let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+
     let glade_src = include_str!("slider.glade");
     let builder = gtk::Builder::new_from_string(glade_src);
 
     let slider_window: gtk::Window = builder.get_object("slider_window").unwrap();
     let slider_img: gtk::Image = builder.get_object("slider_img").unwrap();
-    slider_window.connect_delete_event(|_, _| {
-        gtk::main_quit();
-        Inhibit(false)
-    });
 
     slider_window
         .override_background_color(slider_window.get_state_flags(), Some(&(gdk::RGBA::black())));
@@ -31,17 +39,47 @@ fn slider(config: &configuration::Configuration) {
     let mon = gdk::Screen::get_default().unwrap();
     let monitor_width = mon.get_width();
     let monitor_height = mon.get_height();
-    let mut picture_path = config.picture_folder.as_ref().unwrap().clone();
-    picture_path.push_str("/");
-    picture_path.push_str(database.get_one().unwrap().path.as_ref());
-    let img = gdk_pixbuf::Pixbuf::new_from_file_at_scale(
-        picture_path,
-        monitor_width,
-        monitor_height,
-        true,
-    )
-    .unwrap();
-    slider_img.set_from_pixbuf(Some(img.as_ref()));
+
+    let picture_path = format!(
+        "{}/{}",
+        config.picture_folder.as_ref().unwrap().clone(),
+        database.get_one().unwrap().path
+    );
+    let _ = sender.send(Message::UpdateImg(picture_path));
+
+    let _guard = {
+        let picture_path_clone = config.picture_folder.as_ref().unwrap().clone();
+        timer.schedule_repeating(chrono::Duration::seconds(5), move || {
+            let picture_path = format!(
+                "{}/{}",
+                picture_path_clone,
+                database.get_one().unwrap().path
+            );
+            let _ = sender.send(Message::UpdateImg(picture_path));
+        })
+    };
+
+    let slider_img_clone = slider_img;
+    receiver.attach(None, move |msg| {
+        match msg {
+            Message::UpdateImg(picture_path) => {
+                let img = gdk_pixbuf::Pixbuf::new_from_file_at_scale(
+                    picture_path,
+                    monitor_width,
+                    monitor_height,
+                    true,
+                )
+                .unwrap();
+                slider_img_clone.set_from_pixbuf(Some(img.as_ref()));
+            }
+        }
+        glib::Continue(true)
+    });
+
+    slider_window.connect_delete_event(|_, _| {
+        gtk::main_quit();
+        Inhibit(false)
+    });
 
     slider_window.fullscreen();
     slider_window.show_all();

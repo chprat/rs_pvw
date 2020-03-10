@@ -22,9 +22,7 @@ impl Database {
     pub fn new(file: &Option<String>) -> Database {
         let database_file: &String = file.as_ref().unwrap();
         let connection: Connection = Connection::open(database_file).unwrap();
-        Database {
-            connection,
-        }
+        Database { connection }
     }
     pub fn get_one(&self) -> Result<Entry> {
         let mut stmt = self.connection.prepare("SELECT id, path FROM Pics WHERE seen = (SELECT MIN(seen) FROM Pics) AND del IS NOT 1 ORDER BY RANDOM() LIMIT 1;")?;
