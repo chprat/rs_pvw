@@ -72,4 +72,9 @@ impl Database {
             .execute("DELETE FROM Pics WHERE id = ?1", params![entry.id])?;
         Ok(())
     }
+    pub fn increment(&self, entry: &Entry) -> Result<()> {
+        self.connection
+            .execute("UPDATE Pics SET seen=seen + 1 WHERE id =  ?1", params![entry.id])?;
+        Ok(())
+    }
 }

@@ -42,21 +42,25 @@ fn slider(config: &configuration::Configuration) {
     let monitor_width = mon.get_width();
     let monitor_height = mon.get_height();
 
+    let entry = database.get_one().unwrap();
     let picture_path = format!(
         "{}/{}",
         config.picture_folder.as_ref().unwrap().clone(),
-        database.get_one().unwrap().path
+        entry.path
     );
+    let _ = database.increment(&entry);
     let _ = sender.send(Message::UpdateImg(picture_path));
 
     let _guard = {
         let picture_path_clone = config.picture_folder.as_ref().unwrap().clone();
         timer.schedule_repeating(chrono::Duration::seconds(5), move || {
+            let entry = database.get_one().unwrap();
             let picture_path = format!(
                 "{}/{}",
                 picture_path_clone,
-                database.get_one().unwrap().path
+                entry.path
             );
+            let _ = database.increment(&entry);
             let _ = sender.send(Message::UpdateImg(picture_path));
         })
     };
