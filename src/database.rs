@@ -1,6 +1,4 @@
-use crate::configuration::Configuration;
 use rusqlite::{Connection, Result};
-use std::path::Path;
 
 #[derive(Debug)]
 pub struct Entry {
@@ -9,8 +7,7 @@ pub struct Entry {
 }
 
 #[derive(Debug)]
-pub struct Database<'a> {
-    pictures_folder: &'a Path,
+pub struct Database {
     connection: Connection,
 }
 
@@ -21,13 +18,11 @@ pub struct Stats {
     pub not_viewed: u32,
 }
 
-impl<'a> Database<'a> {
-    pub fn new(config: &Configuration) -> Database {
-        let pictures_folder: &String = config.picture_folder.as_ref().unwrap();
-        let database_file: &String = config.database_file.as_ref().unwrap();
+impl Database {
+    pub fn new(file: &Option<String>) -> Database {
+        let database_file: &String = file.as_ref().unwrap();
         let connection: Connection = Connection::open(database_file).unwrap();
         Database {
-            pictures_folder: Path::new(pictures_folder),
             connection,
         }
     }

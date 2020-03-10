@@ -10,7 +10,7 @@ mod configuration;
 mod database;
 
 fn slider(config: &configuration::Configuration) {
-    let database = database::Database::new(&config);
+    let database = database::Database::new(&config.database_file);
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;
@@ -58,7 +58,7 @@ fn update_database() {
 }
 
 fn database_stats(config: &configuration::Configuration) {
-    let database = database::Database::new(&config);
+    let database = database::Database::new(&config.database_file);
     let stats = database.stats().unwrap();
     let nv = stats.not_viewed as f32;
     let a = stats.all as f32;
