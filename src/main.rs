@@ -9,7 +9,9 @@ use gtk::prelude::*;
 use std::cell::RefCell;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 use std::rc::Rc;
+use walkdir::WalkDir;
 
 mod configuration;
 mod database;
@@ -55,11 +57,7 @@ fn slider(config: &configuration::Configuration) {
         let picture_path_clone = config.picture_folder.as_ref().unwrap().clone();
         timer.schedule_repeating(chrono::Duration::seconds(5), move || {
             let entry = database.get_one().unwrap();
-            let picture_path = format!(
-                "{}/{}",
-                picture_path_clone,
-                entry.path
-            );
+            let picture_path = format!("{}/{}", picture_path_clone, entry.path);
             let _ = database.increment(&entry);
             let _ = sender.send(Message::UpdateImg((entry.id, picture_path)));
         })
@@ -95,9 +93,15 @@ fn slider(config: &configuration::Configuration) {
     let database2 = database::Database::new(&config.database_file);
     slider_window.connect_key_press_event(move |window, gdk| {
         match gdk.get_keyval() {
-            gdk::enums::key::space => {
-                database2.mark(&database2.get_entry(window.get_title().unwrap().as_str().parse::<u32>().unwrap()).unwrap()).unwrap()
-            },
+            gdk::enums::key::space => database2
+                .mark(
+                    &database2
+                        .get_entry_by_id(
+                            window.get_title().unwrap().as_str().parse::<u32>().unwrap(),
+                        )
+                        .unwrap(),
+                )
+                .unwrap(),
             // TODO: implement moving during slideshow
             gdk::enums::key::Left => println!("left"),
             gdk::enums::key::Right => println!("right"),
@@ -132,8 +136,36 @@ fn move_files(config: &configuration::Configuration) {
     }
 }
 
-fn update_database() {
-    println!("Update")
+fn update_database(config: &configuration::Configuration) {
+    let database = database::Database::new(&config.database_file);
+    let mut files: Vec<PathBuf> = Vec::new();
+    let mut entries: Vec<PathBuf> = Vec::new();
+    for entry in WalkDir::new(config.picture_folder.as_ref().unwrap()) {
+        let entry = entry.unwrap();
+        if !entry.path().is_dir() {
+            files.push(entry.path().to_path_buf());
+        }
+    }
+    for entry in database.get_all().unwrap() {
+        entries.push(Path::new(config.picture_folder.as_ref().unwrap()).join(entry.path.clone()));
+    }
+    for entry in &entries {
+        if !files.contains(&entry) {
+            let path = entry
+                .strip_prefix(PathBuf::from(config.picture_folder.as_ref().unwrap()))
+                .unwrap();
+            let old = database.get_entry_by_path(path.to_str().unwrap()).unwrap();
+            let _ = database.remove(&old);
+        }
+    }
+    for entry in &files {
+        if !entries.contains(&entry) {
+            let new = entry
+                .strip_prefix(PathBuf::from(config.picture_folder.as_ref().unwrap()))
+                .unwrap();
+            let _ = database.add(new.to_str().unwrap());
+        }
+    }
 }
 
 fn database_stats(config: &configuration::Configuration) {
@@ -247,7 +279,7 @@ fn main() {
         slider(&config);
     } else if args.len() == 2 {
         match args[1].as_str() {
-            "update" => update_database(),
+            "update" => update_database(&config),
             "move" => move_files(&config),
             "stats" => database_stats(&config),
             "settings" => program_settings(&config),
