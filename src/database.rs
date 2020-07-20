@@ -33,6 +33,18 @@ impl Database {
             })
         })
     }
+    pub fn get_seen(&self, id: u32) -> Result<u32> {
+        let mut stmt = self
+            .connection
+            .prepare("SELECT seen FROM Pics WHERE id = ?1")?;
+        stmt.query_row(params![id], |row| Ok(row.get(0)?))
+    }
+    pub fn get_min(&self) -> Result<u32> {
+        let mut stmt = self
+            .connection
+            .prepare("SELECT MIN(seen) FROM Pics WHERE del IS NOT 1 AND seen > 0")?;
+        stmt.query_row(rusqlite::NO_PARAMS, |row| Ok(row.get(0)?))
+    }
     // TODO: this function currently only exists because we only
     // transfer the id of an entry between timer and key_listener
     pub fn get_entry_by_id(&self, id: u32) -> Result<Entry> {
@@ -121,10 +133,19 @@ impl Database {
         Ok(())
     }
     pub fn increment(&self, entry: &Entry) -> Result<()> {
-        self.connection.execute(
-            "UPDATE Pics SET seen=seen + 1 WHERE id =  ?1",
-            params![entry.id],
-        )?;
+        let seen = self.get_seen(entry.id).unwrap();
+        if seen != 0 {
+            self.connection.execute(
+                "UPDATE Pics SET seen=seen + 1 WHERE id = ?1",
+                params![entry.id],
+            )?;
+        } else {
+            let min = self.get_min().unwrap();
+            self.connection.execute(
+                "UPDATE Pics SET seen=?1 WHERE id = ?2",
+                params![min, entry.id],
+            )?;
+        }
         Ok(())
     }
     pub fn mark(&self, entry: &Entry) -> Result<()> {
