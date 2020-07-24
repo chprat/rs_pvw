@@ -32,7 +32,7 @@ fn slider(config: &configuration::Configuration) {
     let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
     let glade_src = include_str!("slider.glade");
-    let builder = gtk::Builder::new_from_string(glade_src);
+    let builder = gtk::Builder::from_string(glade_src);
 
     let slider_window: gtk::Window = builder.get_object("slider_window").unwrap();
     let slider_img: gtk::Image = builder.get_object("slider_img").unwrap();
@@ -68,7 +68,7 @@ fn slider(config: &configuration::Configuration) {
     receiver.attach(None, move |msg| {
         match msg {
             Message::UpdateImg((id, picture_path)) => {
-                let img = gdk_pixbuf::Pixbuf::new_from_file_at_scale(
+                let img = gdk_pixbuf::Pixbuf::from_file_at_scale(
                     picture_path,
                     monitor_width,
                     monitor_height,
@@ -93,7 +93,7 @@ fn slider(config: &configuration::Configuration) {
     let database2 = database::Database::new(&config.database_file);
     slider_window.connect_key_press_event(move |window, gdk| {
         match gdk.get_keyval() {
-            gdk::enums::key::space => database2
+            gdk::keys::constants::space => database2
                 .mark(
                     &database2
                         .get_entry_by_id(
@@ -103,8 +103,8 @@ fn slider(config: &configuration::Configuration) {
                 )
                 .unwrap(),
             // TODO: implement moving during slideshow
-            gdk::enums::key::Left => println!("left"),
-            gdk::enums::key::Right => println!("right"),
+            gdk::keys::constants::Left => println!("left"),
+            gdk::keys::constants::Right => println!("right"),
             _ => (),
         };
         Inhibit(false)
@@ -188,7 +188,7 @@ fn program_settings(config: &configuration::Configuration) {
         return;
     }
     let glade_src = include_str!("settings.glade");
-    let builder = gtk::Builder::new_from_string(glade_src);
+    let builder = gtk::Builder::from_string(glade_src);
 
     let settings_window: gtk::Window = builder.get_object("settings_window").unwrap();
     let database_button: gtk::Button = builder.get_object("database_button").unwrap();
@@ -218,7 +218,7 @@ fn program_settings(config: &configuration::Configuration) {
             let buffer = gtk::EntryBuffer::new(filename.as_path().to_str());
             database_entry.set_buffer(&buffer);
         }
-        database_chooser.destroy();
+        unsafe { database_chooser.destroy(); }
     });
 
     let settings_window_clone2 = settings_window.clone();
@@ -239,7 +239,7 @@ fn program_settings(config: &configuration::Configuration) {
             let buffer = gtk::EntryBuffer::new(filename.as_path().to_str());
             pictures_entry.set_buffer(&buffer);
         }
-        picture_chooser.destroy();
+        unsafe { picture_chooser.destroy(); }
     });
 
     let config_clone: Rc<RefCell<configuration::Configuration>> =
