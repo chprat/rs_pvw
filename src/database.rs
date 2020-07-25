@@ -11,13 +11,6 @@ pub struct Database {
     connection: Connection,
 }
 
-#[derive(Debug)]
-pub struct Stats {
-    pub all: u32,
-    pub viewed: u32,
-    pub not_viewed: u32,
-}
-
 impl Database {
     pub fn new(file: &Option<String>) -> Database {
         let database_file: &String = file.as_ref().unwrap();
@@ -43,6 +36,12 @@ impl Database {
         let mut stmt = self
             .connection
             .prepare("SELECT MIN(seen) FROM Pics WHERE del IS NOT 1 AND seen > 0")?;
+        stmt.query_row(rusqlite::NO_PARAMS, |row| Ok(row.get(0)?))
+    }
+    pub fn get_max(&self) -> Result<u32> {
+        let mut stmt = self
+            .connection
+            .prepare("SELECT MAX(seen) FROM Pics WHERE del IS NOT 1 AND seen > 0")?;
         stmt.query_row(rusqlite::NO_PARAMS, |row| Ok(row.get(0)?))
     }
     // TODO: this function currently only exists because we only
@@ -78,22 +77,20 @@ impl Database {
         )?;
         Ok(())
     }
-    pub fn stats(&self) -> Result<Stats> {
-        let mut stmt = self.connection.prepare("SELECT count(id) FROM Pics;")?;
-        let all = stmt.query_row(rusqlite::NO_PARAMS, |row| row.get::<_, u32>(0))?;
+    pub fn get_count(&self, seen: u32) -> Result<u32> {
         let mut stmt = self
             .connection
-            .prepare("SELECT count(id) FROM Pics WHERE seen IS 0;")?;
-        let not_viewed = stmt.query_row(rusqlite::NO_PARAMS, |row| row.get::<_, u32>(0))?;
-        let mut stmt = self
-            .connection
-            .prepare("SELECT count(id) FROM Pics WHERE seen IS NOT 0;")?;
-        let viewed = stmt.query_row(rusqlite::NO_PARAMS, |row| row.get::<_, u32>(0))?;
-        Ok(Stats {
-            all,
-            viewed,
-            not_viewed,
-        })
+            .prepare("SELECT count(id) FROM Pics WHERE seen = ?1;")?;
+        stmt.query_row(params![seen], |row| Ok(row.get(0)?))
+    }
+    pub fn stats(&self) -> Vec<(u32, u32)> {
+        let max = self.get_max().unwrap();
+        let mut entries: Vec<(u32, u32)> = Vec::new();
+        for x in (0..max + 1).rev() {
+            let count = self.get_count(x).unwrap();
+            entries.push((x, count));
+        }
+        entries
     }
     pub fn get_marked(&self) -> Result<Vec<Entry>> {
         let mut stmt = self

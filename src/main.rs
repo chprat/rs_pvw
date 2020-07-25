@@ -170,16 +170,15 @@ fn update_database(config: &configuration::Configuration) {
 
 fn database_stats(config: &configuration::Configuration) {
     let database = database::Database::new(&config.database_file);
-    let stats = database.stats().unwrap();
-    let nv = stats.not_viewed as f32;
-    let a = stats.all as f32;
-    println!(
-        "{} pictures\n{} pictures viewed\n{} pictures not viewed\n{:.2}% not viewed",
-        stats.all,
-        stats.viewed,
-        stats.not_viewed,
-        nv / a * 100.0
-    );
+    let stats = database.stats();
+    let mut all = 0;
+    for entry in stats {
+        if entry.1 > 0 {
+            println!("{}: {}", entry.0, entry.1);
+        }
+        all += entry.1;
+    }
+    println!("{} entries overall", all);
 }
 
 fn program_settings(config: &configuration::Configuration) {
