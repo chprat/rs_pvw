@@ -218,7 +218,9 @@ fn program_settings(config: &configuration::Configuration) {
             let buffer = gtk::EntryBuffer::new(filename.as_path().to_str());
             database_entry.set_buffer(&buffer);
         }
-        unsafe { database_chooser.destroy(); }
+        unsafe {
+            database_chooser.destroy();
+        }
     });
 
     let settings_window_clone2 = settings_window.clone();
@@ -239,7 +241,9 @@ fn program_settings(config: &configuration::Configuration) {
             let buffer = gtk::EntryBuffer::new(filename.as_path().to_str());
             pictures_entry.set_buffer(&buffer);
         }
-        unsafe { picture_chooser.destroy(); }
+        unsafe {
+            picture_chooser.destroy();
+        }
     });
 
     let config_clone: Rc<RefCell<configuration::Configuration>> =
