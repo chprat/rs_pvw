@@ -11,3 +11,6 @@ Cargo.lock
 
 # Applications configuration file
 pvw.ini
+
+# Visual Studio Code configuration
+/.vscode/
