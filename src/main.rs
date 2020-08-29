@@ -41,9 +41,19 @@ fn slider(config: &configuration::Configuration) {
         .override_background_color(slider_window.get_state_flags(), Some(&(gdk::RGBA::black())));
 
     let mon = gdk::Screen::get_default().unwrap();
-    let monitor_width = mon.get_width();
-    let monitor_height = mon.get_height();
-
+    let monitors = mon.get_n_monitors();
+    let mut monitor_width = 0;
+    let mut monitor_height = 0;
+    let mut monitor_pixels = 0;
+    for i in 0..monitors {
+        let monitor = mon.get_monitor_geometry(i);
+        let pixels = monitor.width * monitor.height;
+        if pixels > monitor_pixels {
+            monitor_pixels = pixels;
+            monitor_height = monitor.height;
+            monitor_width = monitor.width;
+        }
+    }
     let entry = database.get_one().unwrap();
     let picture_path = format!(
         "{}/{}",
