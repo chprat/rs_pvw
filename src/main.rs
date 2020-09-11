@@ -191,6 +191,17 @@ fn database_stats(config: &configuration::Configuration) {
     println!("{} entries overall", all);
 }
 
+fn database_init(config: &configuration::Configuration) {
+    let database = database::Database::new(&config.database_file);
+    let e = database.init();
+    if e.is_ok() {
+        update_database(config);
+        database_stats(config);
+    } else {
+        println!("database already initialized");
+    }
+}
+
 fn program_settings(config: &configuration::Configuration) {
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
@@ -296,6 +307,7 @@ fn main() {
             "move" => move_files(&config),
             "stats" => database_stats(&config),
             "settings" => program_settings(&config),
+            "init" => database_init(&config),
             _ => println!("Unsupported argument"),
         }
     } else {
