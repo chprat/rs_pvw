@@ -30,7 +30,11 @@ impl Database {
         Ok(())
     }
     pub fn get_one(&self) -> Result<Entry> {
-        let mut stmt = self.connection.prepare("SELECT id, path FROM Pics WHERE seen = (SELECT MIN(seen) FROM Pics WHERE del IS NOT 1) AND del IS NOT 1 ORDER BY RANDOM() LIMIT 1;")?;
+        let mut stmt = self.connection.prepare(
+            "SELECT id, path FROM Pics WHERE
+            seen = (SELECT MIN(seen) FROM Pics WHERE del IS NOT 1) AND
+            del IS NOT 1 ORDER BY RANDOM() LIMIT 1;",
+        )?;
         stmt.query_row(rusqlite::NO_PARAMS, |row| {
             Ok(Entry {
                 id: row.get(0)?,
