@@ -41,7 +41,7 @@ impl Database {
     pub fn get_max(&self) -> Result<u32> {
         let mut stmt = self
             .connection
-            .prepare("SELECT MAX(seen) FROM Pics WHERE del IS NOT 1 AND seen > 0")?;
+            .prepare("SELECT MAX(seen) FROM Pics WHERE del IS NOT 1")?;
         stmt.query_row(rusqlite::NO_PARAMS, |row| Ok(row.get(0)?))
     }
     // TODO: this function currently only exists because we only
@@ -137,7 +137,11 @@ impl Database {
                 params![entry.id],
             )?;
         } else {
-            let min = self.get_min().unwrap();
+            let min = self.get_min();
+            let min = match min {
+                Ok(value) => value,
+                Err(_e) => 1,
+            };
             self.connection.execute(
                 "UPDATE Pics SET seen=?1 WHERE id = ?2",
                 params![min, entry.id],
