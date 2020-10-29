@@ -23,3 +23,21 @@ jobs:
       run: sudo apt update && sudo apt install libgtk-3-dev libsqlite3-dev
     - name: Build
       run: cargo build --verbose --all --release
+
+  build-win:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+    - name: Install toolchain & dependencies
+      uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: mingw-w64-x86_64-gtk3 mingw-w64-x86_64-sqlite3 mingw-w64-x86_64-toolchain mingw-w64-x86_64-rust base-devel
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose --all --release
